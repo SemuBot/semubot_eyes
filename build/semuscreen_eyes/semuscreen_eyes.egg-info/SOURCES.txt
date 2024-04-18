@@ -1,0 +1,17 @@
+LICENSE
+package.xml
+setup.cfg
+setup.py
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/PKG-INFO
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/SOURCES.txt
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/dependency_links.txt
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/entry_points.txt
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/requires.txt
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/top_level.txt
+../../build/semuscreen_eyes/semuscreen_eyes.egg-info/zip-safe
+resource/semuscreen_eyes
+semuscreen_eyes/__init__.py
+semuscreen_eyes/eye_subscriber.py
+test/test_copyright.py
+test/test_flake8.py
+test/test_pep257.py

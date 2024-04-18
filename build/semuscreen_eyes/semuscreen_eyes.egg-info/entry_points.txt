@@ -1,0 +1,3 @@
+[console_scripts]
+eye_subscriber = semuscreen_eyes.eye_subscriber:main
+

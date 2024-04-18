@@ -1,0 +1,23 @@
+[0.488s] Invoking command in '/home/timur/semuscreen/src/semuscreen_eyes': PYTHONPATH=/home/timur/semuscreen/build/semuscreen_eyes/prefix_override:/home/timur/semuscreen/install/semuscreen_eyes/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated setup.py egg_info --egg-base ../../build/semuscreen_eyes build --build-base /home/timur/semuscreen/build/semuscreen_eyes/build install --record /home/timur/semuscreen/build/semuscreen_eyes/install.log --single-version-externally-managed install_data
+[0.677s] running egg_info
+[0.677s] writing ../../build/semuscreen_eyes/semuscreen_eyes.egg-info/PKG-INFO
+[0.678s] writing dependency_links to ../../build/semuscreen_eyes/semuscreen_eyes.egg-info/dependency_links.txt
+[0.678s] writing entry points to ../../build/semuscreen_eyes/semuscreen_eyes.egg-info/entry_points.txt
+[0.678s] writing requirements to ../../build/semuscreen_eyes/semuscreen_eyes.egg-info/requires.txt
+[0.678s] writing top-level names to ../../build/semuscreen_eyes/semuscreen_eyes.egg-info/top_level.txt
+[0.679s] reading manifest file '../../build/semuscreen_eyes/semuscreen_eyes.egg-info/SOURCES.txt'
+[0.679s] adding license file 'LICENSE'
+[0.680s] writing manifest file '../../build/semuscreen_eyes/semuscreen_eyes.egg-info/SOURCES.txt'
+[0.680s] running build
+[0.680s] running build_py
+[0.680s] running install
+[0.681s] running install_lib
+[0.682s] running install_data
+[0.682s] copying resource/semuscreen_eyes -> /home/timur/semuscreen/install/semuscreen_eyes/share/ament_index/resource_index/packages
+[0.682s] copying package.xml -> /home/timur/semuscreen/install/semuscreen_eyes/share/semuscreen_eyes
+[0.682s] running install_egg_info
+[0.683s] Copying ../../build/semuscreen_eyes/semuscreen_eyes.egg-info to /home/timur/semuscreen/install/semuscreen_eyes/lib/python3.10/site-packages/semuscreen_eyes-0.0.0-py3.10.egg-info
+[0.684s] running install_scripts
+[0.698s] Installing eye_subscriber script to /home/timur/semuscreen/install/semuscreen_eyes/lib/semuscreen_eyes
+[0.698s] writing list of installed files to '/home/timur/semuscreen/build/semuscreen_eyes/install.log'
+[0.713s] Invoked command in '/home/timur/semuscreen/src/semuscreen_eyes' returned '0': PYTHONPATH=/home/timur/semuscreen/build/semuscreen_eyes/prefix_override:/home/timur/semuscreen/install/semuscreen_eyes/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated setup.py egg_info --egg-base ../../build/semuscreen_eyes build --build-base /home/timur/semuscreen/build/semuscreen_eyes/build install --record /home/timur/semuscreen/build/semuscreen_eyes/install.log --single-version-externally-managed install_data
