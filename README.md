@@ -1,4 +1,4 @@
-# semuscreen_eyes
+# semubot_eyes
 The SemuBot eye movement script that gets the data feed from the ReSpeaker V2.0 mic-array
 
 Prerequisites:
@@ -8,5 +8,5 @@ Prerequisites:
 
 Running the node in your workspace:
 
-```ros2 run semuscreen_eyes eye_subscriber_py```
+```ros2 run semubot_eyes eye_subscriber_py```
 
