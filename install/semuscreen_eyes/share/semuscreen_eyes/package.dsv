@@ -1,6 +1,0 @@
-source;share/semuscreen_eyes/hook/pythonpath.ps1
-source;share/semuscreen_eyes/hook/pythonpath.dsv
-source;share/semuscreen_eyes/hook/pythonpath.sh
-source;share/semuscreen_eyes/hook/ament_prefix_path.ps1
-source;share/semuscreen_eyes/hook/ament_prefix_path.dsv
-source;share/semuscreen_eyes/hook/ament_prefix_path.sh
