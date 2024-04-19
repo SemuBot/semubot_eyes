@@ -2,3 +2,5 @@
 build/
 log/
 install/
+src/audio_common/
+src/respeaker_ros/
