@@ -17,10 +17,10 @@ pygame.display.set_caption("Semuscreen")
 
 #all imported images
 #draw pupils on the x-axis using an image with a transparent background
-lid_image = pygame.image.load("src/semubot_eyes/lidst.png") # Use an image with a transparent background!
-outline_image = pygame.image.load("src/semubot_eyes/outline.png") # Use an image with a transparent background!
-pupil_image = pygame.image.load("src/semubot_eyes/eyebb.png")  # Use an image with a transparent background!
-mouth_image = pygame.image.load("src/semubot_eyes/mouth.png") # Use an image with a transparent background!
+lid_image = pygame.image.load("src/semubot_eyes/images/lidst.png") # Use an image with a transparent background!
+outline_image = pygame.image.load("src/semubot_eyes/images/outline.png") # Use an image with a transparent background!
+pupil_image = pygame.image.load("src/semubot_eyes/images/eyebb.png")  # Use an image with a transparent background!
+mouth_image = pygame.image.load("src/semubot_eyes/images/mouth.png") # Use an image with a transparent background!
 
 class RespeakerSubscriber(Node):
     
