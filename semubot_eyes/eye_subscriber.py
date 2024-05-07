@@ -57,28 +57,28 @@ class RespeakerSubscriber(Node):
 
     def draw_eyes(self):
         #calculate pupil x-coordinate based on DOA (left to right movement)
-        left_eye_x = self.width // 2 - self.eye_distance // 2 - 55 #adjust x eye positions here, default -> 750
-        right_eye_x = self.width // 2 + self.eye_distance // 2 + 145 #default -> 2650
+        left_eye_x = self.width // 2 - self.eye_distance // 2 - 270 #adjust x eye positions here, default -> 750
+        right_eye_x = self.width // 2 + self.eye_distance // 2 + 240 #default -> 2650
 
-        lid_image_scaled = pygame.transform.scale(lid_image, (self.lid_width, self.lid_height))
+        lid_image_scaled = pygame.transform.scale(lid_image, (self.lid_width*1.5, self.lid_height*1.5))
 
-        outline_image_scaled = pygame.transform.scale(outline_image, (self.lid_width, self.lid_height))
+        outline_image_scaled = pygame.transform.scale(outline_image, (self.lid_width*1.5, self.lid_height*1.5))
 
-        mouth_image_scaled = pygame.transform.scale(mouth_image, (self.lid_width/3, self.lid_height/6))
+        mouth_image_scaled = pygame.transform.scale(mouth_image, (self.lid_width/2.5, self.lid_height/5.5))
 
-        self.screen.blit(lid_image_scaled, (270, 100))
-        self.screen.blit(outline_image_scaled, (270, 100))
-        self.screen.blit(mouth_image_scaled, (730, 700))
+        self.screen.blit(lid_image_scaled, (-60, 100))
+        self.screen.blit(outline_image_scaled, (-60, 100))
+        self.screen.blit(mouth_image_scaled, (715, 1020))
         
         if abs(self.direction) > 120: #lasy control of the borders
-            self.direction = self.direction * 0.65
+            self.direction = self.direction * 0.5
 
         pupil_x_left = left_eye_x + self.direction 
         pupil_x_right = right_eye_x + self.direction 
         
         #adjust the y-coordinate to center the pupils within the lids
-        pupil_y = self.eye_y - self.pupil_radius * 2 - (+65) #adjust y eye position here
-        pupil_img = pygame.transform.scale(pupil_image, (self.pupil_radius * 2.95, self.pupil_radius * 2.95))
+        pupil_y = self.eye_y - self.pupil_radius * 2 - (-30) #adjust y eye position here
+        pupil_img = pygame.transform.scale(pupil_image, (self.pupil_radius * 5, self.pupil_radius * 5))
         self.screen.blit(pupil_img, (pupil_x_left - self.pupil_radius * 2, pupil_y))
         self.screen.blit(pupil_img, (pupil_x_right - self.pupil_radius * 2, pupil_y))
 
