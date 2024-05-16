@@ -1,6 +1,8 @@
 # semubot_eyes
 The SemuBot eye movement script that gets the data feed from the ReSpeaker V2.0 mic-array
 
+The source of  `mouth.png`: https://creazilla.com/nodes/1556071-robot-mouth-clipart <br/>
+
 Prerequisites:
 * Clone the following repo: (https://github.com/SemuBot/respeaker_ros.git) and follow instructions in README.md for mic-array and `audio_common` package setup. <br/>
 * `pip install pygame` <br/>
