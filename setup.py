@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'eye_subscriber = semubot_eyes.eye_subscriber:main'
+            'eye_controller = semubot_eyes.eye_controller:main'
         ],
     },
 )

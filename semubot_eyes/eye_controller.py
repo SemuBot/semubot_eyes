@@ -25,7 +25,7 @@ mouth_image = pygame.image.load("src/semubot_eyes/images/mouth.png") # Use an im
 class RespeakerSubscriber(Node):
     
     def __init__(self):
-        super().__init__('subscriber_semubot_eyes')
+        super().__init__('eye_controller')
         
         #eye values/parameters
         self.width, self.height = 1920, 1080
@@ -85,34 +85,9 @@ class RespeakerSubscriber(Node):
     def doa_callback(self, msg):
         self.get_logger().info('DOA: "%s"' % msg.pose)
 
-    def moving_average(pos, n_values): #can be used for smoothing out the incoming doa data -> slower eye movement
-        """
-        :param pos: The latest value that is passed to the filter
-        :n_values: The integer after which we start popping out the unnecessary values from our array and account only for the newest n_values only
-        :return: The filtered value
-        """
-        global arr, n
-        
-        if pos:
-            arr.append(pos)
-            n = n + 1
-
-        if n > n_values:
-            arr = arr[-n_values:]
-            n = n_values
-
-        if n > 0:
-            filtered_val = sum(arr[::-1]) / n
-        else:
-            filtered_val = 0  # Or any other default value
-            
-        print("Filter val: ", filtered_val)
-            
-        return filtered_val
-
 def main(args=None):
     rclpy.init(args=args)
-    subscriber = RespeakerSubscriber()
+    eye_controller = RespeakerSubscriber()
 
     try:
         while rclpy.ok():
@@ -123,14 +98,14 @@ def main(args=None):
                     exit()
                 elif event.type == pygame.VIDEORESIZE:
                     #handle window resize event
-                    subscriber.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                    eye_controller.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 
             #process ROS messages
-            rclpy.spin_once(subscriber, timeout_sec=0)
+            rclpy.spin_once(eye_controller, timeout_sec=0)
 
             #update display
-            subscriber.screen.fill((255, 255, 255))
-            subscriber.draw_eyes()
+            eye_controller.screen.fill((255, 255, 255))
+            eye_controller.draw_eyes()
             pygame.display.flip()
             pygame.time.delay(10)
 
@@ -138,7 +113,7 @@ def main(args=None):
         pass
 
     finally:
-        subscriber.destroy_node()
+        eye_controller.destroy_node()
         rclpy.shutdown()
 
 if __name__ == '__main__':
