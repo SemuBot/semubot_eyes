@@ -19,5 +19,5 @@ Running the node in your workspace (publisher and subscriber nodes in separate t
 
 3. In the second terminal:
 * ```source install/local_setup.bash``` <br/>
-* ```ros2 run semubot_eyes eye_subscriber``` <br/>
+* ```ros2 run semubot_eyes eye_controller``` <br/>
 
