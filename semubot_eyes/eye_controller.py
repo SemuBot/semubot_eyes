@@ -4,7 +4,13 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32
 from geometry_msgs.msg import PoseStamped
+from ament_index_python.packages import get_package_share_directory
 import pygame
+import numpy as np 
+import scipy.io.wavfile as wav 
+import subprocess
+import threading
+import os
 
 #variables for the filter
 arr = []
@@ -13,14 +19,25 @@ n = 0
 #pygame inits
 pygame.init()
 pygame.display.set_caption("Semuscreen")
+pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.NOFRAME)
 
+# Get paths to the ROS packages
+eyes_package_name = 'semubot_eyes'  
+eyes_package_path = get_package_share_directory(eyes_package_name)
+
+img_dir_path = os.path.join(eyes_package_path, "images")
 
 #all imported images
 #draw pupils on the x-axis using an image with a transparent background
-lid_image = pygame.image.load("src/semubot_eyes/images/lidst.png") # Use an image with a transparent background!
-outline_image = pygame.image.load("src/semubot_eyes/images/outline.png") # Use an image with a transparent background!
-pupil_image = pygame.image.load("src/semubot_eyes/images/eyebb.png")  # Use an image with a transparent background!
-mouth_image = pygame.image.load("src/semubot_eyes/images/mouth.png") # Use an image with a transparent background!
+lid_image = pygame.image.load(os.path.join(img_dir_path, "lidst.png")) # Use an image with a transparent background!
+outline_image = pygame.image.load(os.path.join(img_dir_path, "outline.png")) # Use an image with a transparent background!
+pupil_image = pygame.image.load(os.path.join(img_dir_path, "eyebb.png"))  # Use an image with a transparent background!
+mouth_image = pygame.image.load(os.path.join(img_dir_path, "mouth3.png")) # Use an image with a transparent background!
+mouth_image2 = pygame.image.load(os.path.join(img_dir_path, "mouth4.png")) # Use an image with a transparent background!
+
+wav_file_path = os.path.join(eyes_package_path, 'test_speech.wav')
+
+sample_rate, adata = wav.read(wav_file_path)
 
 class RespeakerSubscriber(Node):
     
@@ -29,7 +46,8 @@ class RespeakerSubscriber(Node):
         
         #eye values/parameters
         self.width, self.height = 1920, 1080
-        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+        #self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE)
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN | pygame.NOFRAME)
 
         self.eye_radius = 250
         self.pupil_radius = 80
@@ -47,6 +65,13 @@ class RespeakerSubscriber(Node):
 
         self.angle = 0
         self.direction = 0
+        
+
+        self.mouth_image = mouth_image
+        self.mouth_image2 = mouth_image2
+        self.current_mouth_image = self.mouth_image
+        self.speech_detected = False
+        self.frame_count = 0
 
     def doa_raw_callback(self, msg):
         #callback function for 'doa_raw' topic
@@ -63,12 +88,25 @@ class RespeakerSubscriber(Node):
         lid_image_scaled = pygame.transform.scale(lid_image, (self.lid_width*1.5, self.lid_height*1.5))
 
         outline_image_scaled = pygame.transform.scale(outline_image, (self.lid_width*1.5, self.lid_height*1.5))
-
-        mouth_image_scaled = pygame.transform.scale(mouth_image, (self.lid_width/2.5, self.lid_height/5.5))
+        
+        mouth_image_scaled = pygame.transform.scale(mouth_image, (self.lid_width/1.5, self.lid_height/2.5))
+        # mouth_image_scaled = pygame.transform.scale(mouth_image, (self.lid_width, self.lid_height))
 
         self.screen.blit(lid_image_scaled, (-60, 100))
         self.screen.blit(outline_image_scaled, (-60, 100))
-        self.screen.blit(mouth_image_scaled, (715, 1020))
+        if self.is_wav_playing(wav_file_path) == True:
+            if self.frame_count % 5 == 0:
+                self.current_mouth_image = self.mouth_image2 
+                self.screen.blit(self.current_mouth_image, (620, 850))
+                # self.frame_count = 0
+            else:
+                self.screen.blit(mouth_image_scaled, (515, 920))
+            self.frame_count += 1
+                
+        else:
+            
+            self.screen.blit(mouth_image_scaled, (515, 920))
+
         
         if abs(self.direction) > 120: #lasy control of the borders
             self.direction = self.direction * 0.5
@@ -85,6 +123,51 @@ class RespeakerSubscriber(Node):
     def doa_callback(self, msg):
         self.get_logger().info('DOA: "%s"' % msg.pose)
 
+    def is_wav_playing(self, wav_file):
+        try:
+            # Get all running processes
+            result = subprocess.run(['pgrep', '-af', 'play.*test_speech.wav'], stdout=subprocess.PIPE) # TODO: remove hardcoded .wav name
+            output = result.stdout.decode()
+
+            # Debugging: print the output of pgrep
+            print("Current 'play' processes:", output)
+            print("wav_file:", wav_file)
+
+            # Check if the WAV file is in the output
+            if len(output) > 0:
+                # print(f"The file {wav_file} is currently playing.")
+                return True
+        except Exception as e:
+            print(f"Error checking for playing process: {e}")
+
+        # print(f"The file {wav_file} is not currently playing.")
+        return False
+
+
+            
+    def update_mouth(self):
+        
+        if self.is_wav_playing(wav_file_path) == True:
+            # # Analyze audio data for speech detection
+            # if self.frame_count < len(adata):
+            #     frame = adata[self.frame_count]
+            #     # Check if the amplitude exceeds a threshold (e.g., 500)
+            #     if np.abs(frame).max() > 500:
+            #         self.speech_detected = True
+            #     else:
+            #         self.speech_detected = False
+                
+                # Switch mouth image if speech is detected
+            # if self.speech_detected == True:
+            # if self.frame_count % 400 == 0:  # Change image every 20 frames
+                self.current_mouth_image = self.mouth_image2 
+                self.screen.blit(self.current_mouth_image, (620, 850))
+            
+            # self.frame_count += 1
+            # self.get_logger().info('Detect: "%s"' % self.speech_detected)
+    
+
+
 def main(args=None):
     rclpy.init(args=args)
     eye_controller = RespeakerSubscriber()
@@ -96,9 +179,9 @@ def main(args=None):
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
-                elif event.type == pygame.VIDEORESIZE:
+                #elif event.type == pygame.VIDEORESIZE:
                     #handle window resize event
-                    eye_controller.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                #    eye_controller.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 
             #process ROS messages
             rclpy.spin_once(eye_controller, timeout_sec=0)
@@ -106,6 +189,7 @@ def main(args=None):
             #update display
             eye_controller.screen.fill((255, 255, 255))
             eye_controller.draw_eyes()
+            # eye_controller.update_mouth()
             pygame.display.flip()
             pygame.time.delay(10)
 
