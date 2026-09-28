@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import Int32, String
 from geometry_msgs.msg import PoseStamped
 from ament_index_python.packages import get_package_share_directory
 import pygame
@@ -11,6 +12,14 @@ import os
 import random
 import time
 import math
+import re
+
+
+def parse_background_color(value):
+    """Accept a #RRGGBB setting and return the RGB tuple used by Pygame."""
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", value):
+        return None
+    return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))
 
 class RespeakerSubscriber(Node):
     def __init__(self):
@@ -27,9 +36,14 @@ class RespeakerSubscriber(Node):
         eyes_package_name = 'semubot_eyes'
         eyes_package_path = get_package_share_directory(eyes_package_name)
         self.img_dir_path = os.path.join(eyes_package_path, "images")
+        self.background_color = (255, 255, 255)
         
         self.subscription_doa_raw = self.create_subscription(Int32, 'doa_raw', self.doa_raw_callback, 10)
         self.subscription_doa = self.create_subscription(PoseStamped, 'doa', self.doa_callback, 10)
+        color_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                               reliability=ReliabilityPolicy.RELIABLE)
+        self.subscription_background_color = self.create_subscription(
+            String, '/face/background_color', self.background_color_callback, color_qos)
         
         #  Load Static Images 
         self.lid_image = self.load_and_scale("both_eyes.png", 1.0, 1.0)
@@ -154,6 +168,13 @@ class RespeakerSubscriber(Node):
     
     def doa_callback(self, msg):
         pass
+
+    def background_color_callback(self, msg):
+        color = parse_background_color(msg.data)
+        if color is None:
+            self.get_logger().warn(f"Ignoring invalid face background color: {msg.data!r}")
+            return
+        self.background_color = color
     
     def update_logic(self):
         current_time = time.time()
@@ -259,7 +280,7 @@ def main(args=None):
             rclpy.spin_once(eye_controller, timeout_sec=0)
             eye_controller.update_logic()
             
-            eye_controller.screen.fill((255, 255, 255))
+            eye_controller.screen.fill(eye_controller.background_color)
             eye_controller.draw_eyes()
             
             pygame.display.flip()
