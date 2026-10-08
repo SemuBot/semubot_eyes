@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, String
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from geometry_msgs.msg import PoseStamped
 from ament_index_python.packages import get_package_share_directory
 import pygame
@@ -11,13 +12,14 @@ import os
 import random
 import time
 import math
+import re
 
 class RespeakerSubscriber(Node):
     def __init__(self):
         super().__init__('eye_controller')
         
-        self.width, self.height = 1024, 600
-        self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN | pygame.NOFRAME)
+        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.NOFRAME)
+        self.width, self.height = 1920, 1440
         pygame.display.set_caption("Semuscreen")
         # Scaling factors
         self.scale_x = self.width / 1920
@@ -30,6 +32,14 @@ class RespeakerSubscriber(Node):
         
         self.subscription_doa_raw = self.create_subscription(Int32, 'doa_raw', self.doa_raw_callback, 10)
         self.subscription_doa = self.create_subscription(PoseStamped, 'doa', self.doa_callback, 10)
+        self.background_color = (255, 255, 255)
+        color_qos = QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
+        )
+        self.subscription_background_color = self.create_subscription(
+            String, '/face/background_color', self.background_color_callback, color_qos)
         
         #  Load Static Images 
         self.lid_image = self.load_and_scale("both_eyes.png", 1.0, 1.0)
@@ -71,8 +81,8 @@ class RespeakerSubscriber(Node):
             self.directional_eyes.append(img)
             
         self.blink_image_index = len(self.directional_eyes) - 1
-        
-        self.eye_center = (self.width // 2, int((self.height // 2 - 100) * self.scale_y))
+        self.eye_center = (self.width // 2, int((self.height* 0.185) * self.scale_y))
+        #self.eye_center = (self.width // 2, self.height // 2 - int(100 * self.scale_y))
         self.pos_lid = (self.eye_center[0] - self.lid_image.get_width() // 2,
                         self.eye_center[1] - self.lid_image.get_height() // 3)
         self.pos_nose = (self.eye_center[0] - self.nose_image.get_width() // 2,
@@ -137,8 +147,6 @@ class RespeakerSubscriber(Node):
         try:
             img = pygame.image.load(path)
             if custom_dims:
-                new_w = int(img.get_width() * self.scale_x)
-                new_h = int(img.get_height() * self.scale_y)
                 new_w = int(self.width * scale_w) if scale_w <= 1.0 else int(scale_w)
                 new_h = int(self.height * scale_h) if scale_h <= 1.0 else int(scale_h)
             else:
@@ -149,6 +157,14 @@ class RespeakerSubscriber(Node):
             self.get_logger().error(f"Failed to load image {filename}: {e}")
             return pygame.Surface((100, 100))
     
+    def background_color_callback(self, msg):
+        color = msg.data.strip()
+        if not re.fullmatch(r'#[0-9A-Fa-f]{6}', color):
+            self.get_logger().warn(f'Ignoring invalid face background color: {color!r}')
+            return
+        self.background_color = tuple(int(color[i:i + 2], 16) for i in (1, 3, 5))
+        self.get_logger().info(f'Face background color: {color.upper()}')
+
     def doa_raw_callback(self, msg):
         pass
     
@@ -259,7 +275,7 @@ def main(args=None):
             rclpy.spin_once(eye_controller, timeout_sec=0)
             eye_controller.update_logic()
             
-            eye_controller.screen.fill((255, 255, 255))
+            eye_controller.screen.fill(eye_controller.background_color)
             eye_controller.draw_eyes()
             
             pygame.display.flip()
