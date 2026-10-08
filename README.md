@@ -21,3 +21,7 @@ Running the node in your workspace (publisher and subscriber nodes in separate t
 * ```source install/local_setup.bash``` <br/>
 * ```ros2 run semubot_eyes eye_controller``` <br/>
 
+The face background is white by default. It subscribes to
+`/face/background_color` (`std_msgs/msg/String`) and accepts colors in `#RRGGBB`
+form. The chest display admin menu publishes this setting; run both devices in
+the same ROS 2 domain to change the face background from the chest.

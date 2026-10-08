@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32, String
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import Int32, String
 from geometry_msgs.msg import PoseStamped
 from ament_index_python.packages import get_package_share_directory
 import pygame
@@ -13,6 +13,13 @@ import random
 import time
 import math
 import re
+
+
+def parse_background_color(value):
+    """Accept a #RRGGBB setting and return the RGB tuple used by Pygame."""
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", value):
+        return None
+    return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))
 
 class RespeakerSubscriber(Node):
     def __init__(self):
@@ -29,15 +36,12 @@ class RespeakerSubscriber(Node):
         eyes_package_name = 'semubot_eyes'
         eyes_package_path = get_package_share_directory(eyes_package_name)
         self.img_dir_path = os.path.join(eyes_package_path, "images")
+        self.background_color = (255, 255, 255)
         
         self.subscription_doa_raw = self.create_subscription(Int32, 'doa_raw', self.doa_raw_callback, 10)
         self.subscription_doa = self.create_subscription(PoseStamped, 'doa', self.doa_callback, 10)
-        self.background_color = (255, 255, 255)
-        color_qos = QoSProfile(
-            depth=1,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-            reliability=ReliabilityPolicy.RELIABLE,
-        )
+        color_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                               reliability=ReliabilityPolicy.RELIABLE)
         self.subscription_background_color = self.create_subscription(
             String, '/face/background_color', self.background_color_callback, color_qos)
         
@@ -157,19 +161,19 @@ class RespeakerSubscriber(Node):
             self.get_logger().error(f"Failed to load image {filename}: {e}")
             return pygame.Surface((100, 100))
     
-    def background_color_callback(self, msg):
-        color = msg.data.strip()
-        if not re.fullmatch(r'#[0-9A-Fa-f]{6}', color):
-            self.get_logger().warn(f'Ignoring invalid face background color: {color!r}')
-            return
-        self.background_color = tuple(int(color[i:i + 2], 16) for i in (1, 3, 5))
-        self.get_logger().info(f'Face background color: {color.upper()}')
-
     def doa_raw_callback(self, msg):
         pass
     
     def doa_callback(self, msg):
         pass
+
+    def background_color_callback(self, msg):
+        color = parse_background_color(msg.data.strip())
+        if color is None:
+            self.get_logger().warn(f"Ignoring invalid face background color: {msg.data!r}")
+            return
+        self.background_color = color
+        self.get_logger().info(f"Face background color: {msg.data.strip().upper()}")
     
     def update_logic(self):
         current_time = time.time()
