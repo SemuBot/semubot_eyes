@@ -5,14 +5,13 @@ from std_msgs.msg import Int32, String
 from geometry_msgs.msg import PoseStamped
 from ament_index_python.packages import get_package_share_directory
 import pygame
-import numpy as np
-import scipy.io.wavfile as wav
-import subprocess
 import os
 import random
 import time
 import math
 import re
+from semubot_eyes.expressions import ExpressionState
+from semubot_eyes.playback import PlaybackTracker
 
 
 def parse_background_color(value):
@@ -44,12 +43,22 @@ class RespeakerSubscriber(Node):
                                reliability=ReliabilityPolicy.RELIABLE)
         self.subscription_background_color = self.create_subscription(
             String, '/face/background_color', self.background_color_callback, color_qos)
+        self.activity = ExpressionState()
+        self.playback = PlaybackTracker()
+        self.expression = 'idle'
+        self.expression_since = time.monotonic()
+        self.last_update = time.monotonic()
+        self.publisher_present = False
+        self.next_graph_check = 0.0
+        self.subscription_activity = self.create_subscription(
+            String, '/semubot/state', self.activity_callback, color_qos)
+        self.subscription_log = self.create_subscription(
+            String, '/semubot/conversation_log', self.log_callback, color_qos)
         
         #  Load Static Images 
         self.lid_image = self.load_and_scale("both_eyes.png", 1.0, 1.0)
         self.outline_image = self.load_and_scale("outline.png", 1.0, 1.0)
         self.nose_image = self.load_and_scale("nose.png", 1500/1920, 650/1080, custom_dims=True)
-        self.eyebrow_image = self.load_and_scale("eyebrows.png", 2100/1920, 1400/1080, custom_dims=True)
         
         #  Load Mouth Images
         mouth_w_ratio = (2388 * (1 * 320/2388) * 2.135 * 2) / 1920
@@ -91,14 +100,21 @@ class RespeakerSubscriber(Node):
                         self.eye_center[1] - self.lid_image.get_height() // 3)
         self.pos_nose = (self.eye_center[0] - self.nose_image.get_width() // 2,
                          int(100 * self.scale_y))
-        self.pos_brows = (self.eye_center[0] - self.eyebrow_image.get_width() // 2,
-                          self.eye_center[1] - int(450 * self.scale_y))
         self.pos_mouth = (int(300 * self.scale_x), int(300 * self.scale_y))
+        mouth_bounds = self.mouth_images[0].get_bounding_rect()
+        self.mouth_center = (self.pos_mouth[0] + mouth_bounds.centerx,
+                             self.pos_mouth[1] + mouth_bounds.centery)
+        mouth = self.mouth_images[0].subsurface(mouth_bounds).copy()
+        self.closed_mouth = pygame.transform.smoothscale(
+            mouth, (mouth.get_width(), max(1, int(mouth.get_height() * 0.16))))
+        self.concerned_mouth = pygame.transform.flip(self.closed_mouth, False, True)
+        self.closed_mouth = mouth  # smiling default mouth (full-height mouth4.png)
+        self.speech_mouths = [image.subsurface(image.get_bounding_rect()).copy()
+                             for image in self.mouth_images]
         
         self.current_eye_index = 0
         self.target_eye_index = 0
         self.eye_transition_progress = 1.0
-        self.eye_transition_speed = 0.15
         
         self.last_saccade_time = time.time()
         self.next_saccade_delay = self.get_natural_saccade_delay()
@@ -113,8 +129,6 @@ class RespeakerSubscriber(Node):
 
         # Mouth Logic
         self.current_mouth_index = 0
-        self.frame_count = 0
-        self.current_wav_file = None
     
     def get_natural_saccade_delay(self):
         if random.random() < 0.5:
@@ -174,9 +188,31 @@ class RespeakerSubscriber(Node):
             return
         self.background_color = color
         self.get_logger().info(f"Face background color: {msg.data.strip().upper()}")
+
+    def activity_callback(self, msg):
+        if not self.activity.receive_state(msg.data):
+            self.get_logger().warn('Ignoring invalid robot activity')
+
+    def log_callback(self, msg):
+        self.activity.receive_log(msg.data)
     
     def update_logic(self):
         current_time = time.time()
+        now = time.monotonic()
+        elapsed = max(0.0, min(0.2, now - self.last_update))
+        self.last_update = now
+        if now >= self.next_graph_check:
+            self.publisher_present = self.count_publishers('/semubot/state') > 0
+            self.next_graph_check = now + 0.5
+        playing = self.playback.update()
+        expression = self.activity.expression(self.publisher_present, playing)
+        if expression != self.expression:
+            self.expression = expression
+            self.expression_since = now
+            self.current_eye_index = 0
+            self.target_eye_index = 0
+            self.eye_transition_progress = 1.0
+            self.get_logger().info(f'Face expression: {expression}')
         
         # Blink 
         # Check if it's time to start a blink
@@ -191,7 +227,7 @@ class RespeakerSubscriber(Node):
             self.is_blinking = False
 
         #  Eye Movement 
-        if current_time - self.last_saccade_time > self.next_saccade_delay:
+        if self.expression == 'idle' and current_time - self.last_saccade_time > self.next_saccade_delay:
             if self.eye_transition_progress >= 1.0:
                 self.target_eye_index = self.choose_next_eye_position()
                 self.last_target = self.target_eye_index
@@ -204,24 +240,13 @@ class RespeakerSubscriber(Node):
                 self.next_saccade_delay = self.get_natural_saccade_delay()
         
         if self.eye_transition_progress < 1.0:
-            self.eye_transition_progress = min(1.0, self.eye_transition_progress + self.eye_transition_speed)
-            t = self.eye_transition_progress
-            eased_progress = 1 - pow(1 - t, 3)
-            
-            if eased_progress > 0.5:
+            self.eye_transition_progress = min(1.0, self.eye_transition_progress + elapsed / 0.18)
+            if self.eye_transition_progress >= 1.0:
                 self.current_eye_index = self.target_eye_index
+
         
         # Audio / Mouth Logic 
-        wav_file = self.is_wav_playing()
-        if wav_file:
-            if self.current_wav_file != wav_file:
-                self.current_wav_file = wav_file
-            if self.frame_count % 5 == 0:
-                self.current_mouth_index = (self.current_mouth_index + 1) % len(self.mouth_images)
-            self.frame_count += 1
-        else:
-            self.current_mouth_index = 0
-            self.frame_count = 0
+        self.current_mouth_index = self.playback.mouth_frame() if playing else 0
     
     def draw_eyes(self):
         if self.is_blinking:
@@ -233,30 +258,62 @@ class RespeakerSubscriber(Node):
             
         eye_x = self.eye_center[0] - current_eye.get_width() // 2
         eye_y = self.eye_center[1] - current_eye.get_height() // 3
+        if self.expression == 'thinking' and not self.is_blinking:
+            phase = time.monotonic() - self.expression_since
+            eye_x += round(6 * self.scale_x * math.sin(phase * 1.8))
+            eye_y -= round(5 * self.scale_y * (0.5 + 0.5 * math.sin(phase * 1.8)))
         self.screen.blit(current_eye, (eye_x, eye_y))
+        if self.expression == 'idle' and not self.is_blinking and self.eye_transition_progress < 1.0:
+            target = self.directional_eyes[self.target_eye_index].copy()
+            progress = 1 - (1 - self.eye_transition_progress) ** 3
+            target.set_alpha(round(progress * 255))
+            self.screen.blit(target, (eye_x, eye_y))
         
         # Outline
         self.screen.blit(self.outline_image, self.pos_lid)
         
         # Features
         self.screen.blit(self.nose_image, self.pos_nose)
-        self.screen.blit(self.eyebrow_image, self.pos_brows)
+        self.draw_expression_brows(eye_x, eye_y)
         
         # Mouth
-        mouth_img = self.mouth_images[self.current_mouth_index]
-        self.screen.blit(mouth_img, self.pos_mouth)
+        mouth_img = self.closed_mouth
+        if self.expression == 'error':
+            mouth_img = self.concerned_mouth
+        elif self.expression == 'speaking' and self.current_mouth_index:
+            mouth_img = self.speech_mouths[self.current_mouth_index]
+        self.screen.blit(mouth_img, mouth_img.get_rect(center=self.mouth_center))
     
-    def is_wav_playing(self):
-        try:
-            result = subprocess.run(['pgrep', '-af', 'play.*\\.wav'], stdout=subprocess.PIPE)
-            output = result.stdout.decode()
-            if len(output) > 0:
-                for line in output.splitlines():
-                    if '.wav' in line:
-                        return line.split()[-1]
-        except Exception:
-            pass
-        return None
+    def draw_expression_brows(self, eye_x, eye_y):
+        """Draw stable eyebrows above the artwork, independent of image margins."""
+        if self.expression not in ('listening', 'thinking', 'error'):
+            return
+        bounds = self.directional_eyes[0].get_bounding_rect().move(eye_x, eye_y)
+        brow_width = bounds.width * 0.24
+        base_y = bounds.top - 35 * self.scale_y
+        thickness = max(3, round(12 * self.scale_y))
+        for side, fraction in enumerate((0.17, 0.83)):
+            center_x = bounds.left + bounds.width * fraction
+            start_y = end_y = base_y
+            lift = 25 * self.scale_y
+            if self.expression == 'error':
+                if side == 0:
+                    end_y -= 35 * self.scale_y
+                else:
+                    start_y -= 35 * self.scale_y
+                lift = 8 * self.scale_y
+            elif self.expression == 'thinking' and side == 1:
+                start_y -= 14 * self.scale_y
+                end_y -= 14 * self.scale_y
+            points = []
+            for step in range(25):
+                t = step / 24
+                x = center_x - brow_width / 2 + brow_width * t
+                y = start_y * (1 - t) + end_y * t - 4 * lift * t * (1 - t)
+                points.append((round(x), round(y)))
+            pygame.draw.lines(self.screen, (20, 20, 20), False, points, thickness)
+            for point in (points[0], points[-1]):
+                pygame.draw.circle(self.screen, (20, 20, 20), point, thickness // 2)
 
 
 def main(args=None):
