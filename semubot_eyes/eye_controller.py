@@ -1,8 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import Int32, String
-from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import String
 from ament_index_python.packages import get_package_share_directory
 import pygame
 import os
@@ -37,8 +36,6 @@ class RespeakerSubscriber(Node):
         self.img_dir_path = os.path.join(eyes_package_path, "images")
         self.background_color = (255, 255, 255)
         
-        self.subscription_doa_raw = self.create_subscription(Int32, 'doa_raw', self.doa_raw_callback, 10)
-        self.subscription_doa = self.create_subscription(PoseStamped, 'doa', self.doa_callback, 10)
         color_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
                                reliability=ReliabilityPolicy.RELIABLE)
         self.subscription_background_color = self.create_subscription(
@@ -175,12 +172,6 @@ class RespeakerSubscriber(Node):
             self.get_logger().error(f"Failed to load image {filename}: {e}")
             return pygame.Surface((100, 100))
     
-    def doa_raw_callback(self, msg):
-        pass
-    
-    def doa_callback(self, msg):
-        pass
-
     def background_color_callback(self, msg):
         color = parse_background_color(msg.data.strip())
         if color is None:
